@@ -5,6 +5,8 @@ import com.gargoylesoftware.htmlunit.html.*;
 import com.gargoylesoftware.htmlunit.util.NameValuePair;
 import com.google.common.base.Charsets;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.internal.runners.JUnit4ClassRunner;
 import org.junit.runner.RunWith;
@@ -22,10 +24,25 @@ public class NavigationExampleTest {
     final static String DOCUMENT ="http://demo.guru99.com/test/newtours/";
     final static String HEADER_FIELD = "Date";
 
+    WebClient webClient;
+
+    @Before
+    public void before() {
+        webClient = getClient();
+    }
+
+    private static WebClient getClient() {
+        final WebClient webClient = new WebClient(BrowserVersion.CHROME);
+        webClient.setCssErrorHandler(new SilentCssErrorHandler());
+        webClient.getOptions().setJavaScriptEnabled(false);
+        webClient.getOptions().setDownloadImages(true);
+        webClient.getOptions().setDoNotTrackEnabled(false);
+        return webClient;
+    }
+
     @Test
     public void authenticate_StateDefault_ExpectedOk() throws Exception {
 
-        final WebClient webClient = getClient();
         final HtmlPage page = webClient.getPage(DOCUMENT);
         WebResponse response = page.getWebResponse();
         checkHeaders(response);
@@ -45,13 +62,11 @@ public class NavigationExampleTest {
         checkHeaders(response);
         assertThat(response2.getContentAsString(Charsets.UTF_8).indexOf("Login Successfully"), is(not(-1)));
 
-        webClient.close();
     }
 
     @Test
     public void authenticate_StateDefault_ExpectedBadCredentials() throws Exception {
 
-        final WebClient webClient = getClient();
         final HtmlPage page = webClient.getPage(DOCUMENT);
         WebResponse response = page.getWebResponse();
         checkHeaders(response);
@@ -71,16 +86,6 @@ public class NavigationExampleTest {
         checkHeaders(response);
         assertThat(response2.getContentAsString(Charsets.UTF_8).indexOf("Login Successfully"), is(-1));
 
-        webClient.close();
-    }
-
-    private static WebClient getClient() {
-        final WebClient webClient = new WebClient(BrowserVersion.CHROME);
-        webClient.setCssErrorHandler(new SilentCssErrorHandler());
-        webClient.getOptions().setJavaScriptEnabled(false);
-        webClient.getOptions().setDownloadImages(true);
-        webClient.getOptions().setDoNotTrackEnabled(false);
-        return webClient;
     }
 
     private static void checkHeaders(WebResponse response){
@@ -99,4 +104,8 @@ public class NavigationExampleTest {
         assertThat(existHeader, is(true));
     }
 
+    @After
+    public void after() {
+        webClient.close();
+    }
 }

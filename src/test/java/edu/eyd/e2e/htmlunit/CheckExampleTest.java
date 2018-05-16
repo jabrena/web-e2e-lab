@@ -4,6 +4,8 @@ import com.gargoylesoftware.htmlunit.*;
 import com.gargoylesoftware.htmlunit.html.*;
 import com.gargoylesoftware.htmlunit.util.NameValuePair;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.internal.runners.JUnit4ClassRunner;
 import org.junit.runner.RunWith;
@@ -23,70 +25,68 @@ public class CheckExampleTest {
     final static String DOCUMENT = "https://www.juanantonio.info";
     final static String HEADER_FIELD = "Date";
 
+    WebClient webClient;
+
+    @Before
+    public void before() {
+        webClient = getClient();
+    }
+
+    private static WebClient getClient() {
+        final WebClient webClient = new WebClient(BrowserVersion.CHROME);
+        webClient.setCssErrorHandler(new SilentCssErrorHandler());
+        webClient.getOptions().setJavaScriptEnabled(false);
+        webClient.getOptions().setDownloadImages(true);
+        webClient.getOptions().setDoNotTrackEnabled(false);
+        return webClient;
+    }
+
     @Test
     public void getDemoDocument_StateDefault_ExpectedHeaderOk() throws Exception {
 
-        final WebClient webClient = getClient();
         final HtmlPage page = webClient.getPage(DOCUMENT);
         WebResponse response = page.getWebResponse();
 
         checkHeaders(response);
-
-        webClient.close();
     }
 
     @Test
     public void getDemoDocument_StateDefault_ExpectedImagesOk() throws Exception {
 
-        final WebClient webClient = getClient();
-        final HtmlPage page = webClient.getPage("https://www.juanantonio.info");
+        final HtmlPage page = webClient.getPage(DOCUMENT);
 
-        //Check images
-        checkImages(webClient, page);
-
-        webClient.close();
+        List<HtmlImage> image = page.<HtmlImage>getByXPath("//img");
+        image.stream().forEach(x -> {
+            try {
+                downloadElement(webClient, page.getFullyQualifiedUrl(x.getSrcAttribute()));
+            } catch (IOException e) {
+                LOGGER.error(e.getLocalizedMessage(), e);
+            }
+        });
     }
 
     @Test
     public void getDemoDocument_StateDefault_ExpectedScriptsOk() throws Exception {
 
-        final WebClient webClient = getClient();
-        final HtmlPage page = webClient.getPage("https://www.juanantonio.info");
+        final HtmlPage page = webClient.getPage(DOCUMENT);
 
-        //Check scripts
-        checkScripts(webClient, page);
-
-        webClient.close();
+        List<HtmlScript> scripts = page.<HtmlScript>getByXPath("//script");
+        scripts.stream().forEach(x -> {
+            try {
+                if(x.getSrcAttribute().equals("")) {
+                    return;
+                }
+                downloadElement(webClient, page.getFullyQualifiedUrl(x.getSrcAttribute()));
+            } catch (IOException e) {
+                LOGGER.error(e.getLocalizedMessage(), e);
+            }
+        });
     }
 
     @Test
     public void getDemoDocument_StateDefault_ExpectedCSSOk() throws Exception {
 
-        final WebClient webClient = getClient();
-        final HtmlPage page = webClient.getPage("https://www.juanantonio.info");
-
-        //Check css/ico
-        checkCSS(webClient, page);
-
-        webClient.close();
-    }
-
-
-    @Test
-    public void getDemoDocument_StateDefault_ExpectedLinksOk() throws Exception {
-
-        final WebClient webClient = getClient();
-        final HtmlPage page = webClient.getPage("https://www.juanantonio.info");
-
-        //Check link
-        checkLinks(webClient, page);
-
-        webClient.close();
-    }
-
-    private static void checkCSS(WebClient webClient, HtmlPage page) throws IOException {
-
-        LOGGER.info("Check CSS");
+        final HtmlPage page = webClient.getPage(DOCUMENT);
 
         List<HtmlLink> scripts = page.<HtmlLink>getByXPath("//link");
         scripts.stream().forEach(x -> {
@@ -106,9 +106,11 @@ public class CheckExampleTest {
         });
     }
 
-    private static void checkLinks(WebClient webClient, HtmlPage page) throws IOException {
 
-        LOGGER.info("Check Links");
+    @Test
+    public void getDemoDocument_StateDefault_ExpectedLinksOk() throws Exception {
+
+        final HtmlPage page = webClient.getPage(DOCUMENT);
 
         List<HtmlAnchor> scripts = page.<HtmlAnchor>getByXPath("//a");
         scripts.stream().forEach(x -> {
@@ -118,44 +120,6 @@ public class CheckExampleTest {
                 LOGGER.error(e.getLocalizedMessage(), e);
             }
         });
-    }
-
-    private static void checkScripts(WebClient webClient, HtmlPage page) throws IOException {
-
-        LOGGER.info("Check Scripts");
-
-        List<HtmlScript> scripts = page.<HtmlScript>getByXPath("//script");
-        scripts.stream().forEach(x -> {
-            try {
-                if(x.getSrcAttribute().equals("")) {
-                    return;
-                }
-                downloadElement(webClient, page.getFullyQualifiedUrl(x.getSrcAttribute()));
-            } catch (IOException e) {
-                LOGGER.error(e.getLocalizedMessage(), e);
-            }
-        });
-    }
-
-    private static void checkImages(WebClient webClient, HtmlPage page) throws IOException {
-
-        LOGGER.info("Check Images");
-
-        List<HtmlImage> image = page.<HtmlImage>getByXPath("//img");
-        image.stream().forEach(x -> {
-            try {
-                downloadElement(webClient, page.getFullyQualifiedUrl(x.getSrcAttribute()));
-            } catch (IOException e) {
-                LOGGER.error(e.getLocalizedMessage(), e);
-            }
-        });
-
-        /*
-        //TODO Remove
-        //Bad Case
-        URL url = new URL("http://www.juanantonio.info/Images/jabLogo2004.gif");
-        downloadElement(webClient, url);
-        */
     }
 
     private static void downloadElement(WebClient webClient, URL url) throws IOException {
@@ -172,17 +136,8 @@ public class CheckExampleTest {
         checkHeaders(imageWebResponse);
     }
 
-    private static WebClient getClient() {
-        final WebClient webClient = new WebClient(BrowserVersion.CHROME);
-        webClient.setCssErrorHandler(new SilentCssErrorHandler());
-        webClient.getOptions().setJavaScriptEnabled(false);
-        webClient.getOptions().setDownloadImages(true);
-        webClient.getOptions().setDoNotTrackEnabled(false);
-        return webClient;
-    }
-
     private static void checkHeaders(WebResponse response){
-        List<NameValuePair> headers = response.getResponseHeaders();
+        final List<NameValuePair> headers = response.getResponseHeaders();
 
         boolean existHeader = false;
 
@@ -197,5 +152,9 @@ public class CheckExampleTest {
         assertThat(existHeader, is(true));
     }
 
+    @After
+    public void after() {
+        webClient.close();
+    }
 
 }
