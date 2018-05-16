@@ -3,42 +3,95 @@ package edu.eyd.e2e.htmlunit;
 import com.gargoylesoftware.htmlunit.*;
 import com.gargoylesoftware.htmlunit.html.*;
 import com.gargoylesoftware.htmlunit.util.NameValuePair;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.Test;
+import org.junit.internal.runners.JUnit4ClassRunner;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 
-public class CheckExample {
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.CombinableMatcher.either;
 
-    public static void main(String[] args) throws Exception {
+@Slf4j
+@RunWith(JUnit4ClassRunner.class)
+public class CheckExampleTest {
+
+    final static String DOCUMENT = "https://www.juanantonio.info";
+    final static String HEADER_FIELD = "Date";
+
+    @Test
+    public void getDemoDocument_StateDefault_ExpectedHeaderOk() throws Exception {
+
+        final WebClient webClient = getClient();
+        final HtmlPage page = webClient.getPage(DOCUMENT);
+        WebResponse response = page.getWebResponse();
+
+        checkHeaders(response);
+
+        webClient.close();
+    }
+
+    @Test
+    public void getDemoDocument_StateDefault_ExpectedImagesOk() throws Exception {
 
         final WebClient webClient = getClient();
         final HtmlPage page = webClient.getPage("https://www.juanantonio.info");
-        //System.out.println(page.asXml());
-        WebResponse response = page.getWebResponse();
-        checkHeaders(response);
 
         //Check images
         checkImages(webClient, page);
 
+        webClient.close();
+    }
+
+    @Test
+    public void getDemoDocument_StateDefault_ExpectedScriptsOk() throws Exception {
+
+        final WebClient webClient = getClient();
+        final HtmlPage page = webClient.getPage("https://www.juanantonio.info");
+
         //Check scripts
         checkScripts(webClient, page);
+
+        webClient.close();
+    }
+
+    @Test
+    public void getDemoDocument_StateDefault_ExpectedCSSOk() throws Exception {
+
+        final WebClient webClient = getClient();
+        final HtmlPage page = webClient.getPage("https://www.juanantonio.info");
 
         //Check css/ico
         checkCSS(webClient, page);
 
+        webClient.close();
+    }
+
+
+    @Test
+    public void getDemoDocument_StateDefault_ExpectedLinksOk() throws Exception {
+
+        final WebClient webClient = getClient();
+        final HtmlPage page = webClient.getPage("https://www.juanantonio.info");
+
         //Check link
         checkLinks(webClient, page);
+
+        webClient.close();
     }
 
     private static void checkCSS(WebClient webClient, HtmlPage page) throws IOException {
 
-        System.out.println("\nCheck CSS\n");
+        LOGGER.info("Check CSS");
 
         List<HtmlLink> scripts = page.<HtmlLink>getByXPath("//link");
         scripts.stream().forEach(x -> {
             try {
-                System.out.println("Original: " + x.getHrefAttribute());
+                LOGGER.debug("Original: " + x.getHrefAttribute());
                 if(x.getHrefAttribute().startsWith("http")) {
                     downloadElement(webClient, new URL(x.getHrefAttribute()));
                 } else if(x.getHrefAttribute().startsWith("//")) {
@@ -48,28 +101,28 @@ public class CheckExample {
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.error(e.getLocalizedMessage(), e);
             }
         });
     }
 
     private static void checkLinks(WebClient webClient, HtmlPage page) throws IOException {
 
-        System.out.println("\nCheck Links\n");
+        LOGGER.info("Check Links");
 
         List<HtmlAnchor> scripts = page.<HtmlAnchor>getByXPath("//a");
         scripts.stream().forEach(x -> {
             try {
                 downloadElement(webClient, page.getFullyQualifiedUrl(x.getHrefAttribute()));
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.error(e.getLocalizedMessage(), e);
             }
         });
     }
 
     private static void checkScripts(WebClient webClient, HtmlPage page) throws IOException {
 
-        System.out.println("\nCheck Scripts\n");
+        LOGGER.info("Check Scripts");
 
         List<HtmlScript> scripts = page.<HtmlScript>getByXPath("//script");
         scripts.stream().forEach(x -> {
@@ -79,21 +132,21 @@ public class CheckExample {
                 }
                 downloadElement(webClient, page.getFullyQualifiedUrl(x.getSrcAttribute()));
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.error(e.getLocalizedMessage(), e);
             }
         });
     }
 
     private static void checkImages(WebClient webClient, HtmlPage page) throws IOException {
 
-        System.out.println("Check Images \n");
+        LOGGER.info("Check Images");
 
         List<HtmlImage> image = page.<HtmlImage>getByXPath("//img");
         image.stream().forEach(x -> {
             try {
                 downloadElement(webClient, page.getFullyQualifiedUrl(x.getSrcAttribute()));
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.error(e.getLocalizedMessage(), e);
             }
         });
 
@@ -107,15 +160,16 @@ public class CheckExample {
 
     private static void downloadElement(WebClient webClient, URL url) throws IOException {
 
-            System.out.println(url);
-            final String accept = webClient.getBrowserVersion().getImgAcceptHeader();
-            final WebRequest request = new WebRequest(url, accept);
-            WebResponse imageWebResponse =  webClient.loadWebResponse(request);
-            System.out.println("Http Status: " + imageWebResponse.getStatusCode());
-            if(imageWebResponse.getStatusCode() != 200 && imageWebResponse.getStatusCode() != 999) {
-                throw new RuntimeException("Bad element:" + url);
-            }
-            checkHeaders(imageWebResponse);
+        LOGGER.debug("url: {}", url);
+        final String accept = webClient.getBrowserVersion().getImgAcceptHeader();
+        final WebRequest request = new WebRequest(url, accept);
+        WebResponse imageWebResponse =  webClient.loadWebResponse(request);
+        LOGGER.debug("Http Status: " + imageWebResponse.getStatusCode());
+        assertThat(imageWebResponse.getStatusCode(), either(is(200)).or(is(999)));
+        if(imageWebResponse.getStatusCode() != 200 && imageWebResponse.getStatusCode() != 999) {
+            throw new RuntimeException("Bad element:" + url);
+        }
+        checkHeaders(imageWebResponse);
     }
 
     private static WebClient getClient() {
@@ -130,13 +184,18 @@ public class CheckExample {
     private static void checkHeaders(WebResponse response){
         List<NameValuePair> headers = response.getResponseHeaders();
 
+        boolean existHeader = false;
+
         for (NameValuePair header : headers) {
-            if(header.getName().equals("Date")) {
-                System.out.println("Header detected: true");
+            if(header.getName().equals(HEADER_FIELD)) {
+                LOGGER.trace("Header detected: true");
+                existHeader = true;
                 break;
             }
-            //System.out.println(header.getName() + " = " + header.getValue());
         }
+
+        assertThat(existHeader, is(true));
     }
+
 
 }
