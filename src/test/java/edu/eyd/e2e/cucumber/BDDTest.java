@@ -1,0 +1,13 @@
+package edu.eyd.e2e.cucumber;
+
+import cucumber.api.CucumberOptions;
+import cucumber.api.junit.Cucumber;
+import org.junit.runner.RunWith;
+
+@RunWith(Cucumber.class)
+@CucumberOptions(
+        plugin = { "pretty", "html:target/cucumber-reports" },
+        features = "src/test/resources/cucumber")
+public class BDDTest {
+
+}
