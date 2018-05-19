@@ -6,3 +6,9 @@ A lab to review alternatives for Web E2E Tests.
 
 Provide a POC about how to test Classic Web applications and
 run E2E on Jenkins.
+
+## How to run the project
+
+```
+mvn clean test
+```
